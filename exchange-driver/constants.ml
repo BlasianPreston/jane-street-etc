@@ -4,7 +4,7 @@ open Types
 (* IMPORTANT: MAKE SURE TO CHANGE [team_name] TO BE YOUR TEAM NAME (IN ALL
    CAPS) *)
 module Please_update_team_name_here = struct
-  let team_name = "Preston"
+  let team_name = "PRESTON"
 end
 
 (* IMPORTANT: CHANGES TO THESE VALUES MAY PREVENT YOUR BOT FROM CONNECTING TO

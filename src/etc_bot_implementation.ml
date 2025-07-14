@@ -2,6 +2,18 @@ open! Core
 open  Async
 open  Import
 
+module State = struct
+  type t = { mutable positions : Position.t Symbol.Map.t } [@@deriving sexp]
+
+  let create () = { positions = Symbol.Map.empty }
+  let next_id t = ()
+  let add_order t ~symbol ~dir ~price ~size = let positions_map = t.positions in
+  Map.add_exn positions_map
+  let on_hello t hello_message = ()
+  let on_ack t order_id = ()
+  let on_fill t (fill : Exchange_message.Fill.t) = Map.change t.positions fill.symbol ~f:(function None -> failwith "No position exists" | Some position -> let position_of_int = Position.to_int position in match fill.dir with Buy -> Position.of_int_exn (position_of_int + 1) | Sell -> Position.of_int_exn (position_of_int - 1))
+end
+
 (* [run_every seconds ~f] is a utility function that will run a given function, [f], every
    [num_seconds] seconds. *)
 let run_every seconds ~f = Async.Clock.every (Time_float.Span.of_sec seconds) f
@@ -21,6 +33,7 @@ let run exchange_type =
          easier. Feel free to open up order_id_generator.ml to see how the
          code works. *)
       let order_id_generator = Order_id_generator.create () in
+      let state = State.create () in
       let latest_order       = ref None                     in
       let read_messages_and_do_some_stuff () =
         (* Read the messages from the exchange. In general, a good rule of
@@ -47,9 +60,20 @@ let run exchange_type =
                ~order_id
                ~symbol:Symbol.bond
                ~dir:Buy
-               ~price:(Price.of_int_exn 950)
-               ~size:(Size.of_int_exn 1)
-             |> don't_wait_for
+               ~price:(Price.of_int_exn 999)
+               ~size:(Size.of_int_exn 50)
+             |> don't_wait_for;
+             let order_id = Order_id_generator.next_id order_id_generator in
+             let add_order = Exchange_driver.add_order
+               exchange_driver
+               ~order_id
+               ~symbol:Symbol.bond
+               ~dir:Sell
+               ~price:(Price.of_int_exn 1001)
+               ~size:(Size.of_int_exn 50) in
+              latest_order := Some (don't_wait_for add_order);
+             don't_wait_for add_order;
+            | Fill order -> ()
            | _ ->
              (* Ignore all other messages (for now) *)
              ());
@@ -59,7 +83,7 @@ let run exchange_type =
              there's a lot of messages! *)
           Core.printf !"%{sexp: Exchange_message.t}\n%!" message)
       in
-      let schedule_periodic_nonsense () =
+      (* let schedule_periodic_nonsense () =
         run_every 1.0 ~f:(fun () ->
           (* Cancel the most recent order, if it exists. *)
           (match !latest_order with
@@ -78,7 +102,7 @@ let run exchange_type =
           |> don't_wait_for;
           latest_order := Some next_order_id)
       in
-      schedule_periodic_nonsense ();
+      schedule_periodic_nonsense (); *)
       read_messages_and_do_some_stuff ())
 ;;
 
