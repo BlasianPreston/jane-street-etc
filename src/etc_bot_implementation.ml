@@ -41,9 +41,10 @@ module State = struct
          | None -> failwith "No position exists"
          | Some position ->
            let position_of_int = Position.to_int position in
+           let size_as_int = Size.to_int fill.size in
            (match fill.dir with
-            | Buy -> Some (Position.of_int_exn (position_of_int + 1))
-            | Sell -> Some (Position.of_int_exn (position_of_int - 1))))
+            | Buy -> Some (Position.of_int_exn (position_of_int + size_as_int))
+            | Sell -> Some (Position.of_int_exn (position_of_int - size_as_int))))
   ;;
 end
 
@@ -72,6 +73,28 @@ module Bond_strategy = struct
       ~size:(Size.of_int_exn amount_to_sell)
     |> don't_wait_for
   ;;
+
+  let adjust_bond_orders (state : State.t) exchange_driver (order : Exchange_message.Fill.t) =
+    let size = Size.to_int order.size in
+    match order.dir with
+    | Buy -> let order_id = Order_id_generator.next_id state.order_id_generator in
+    Exchange_driver.add_order
+      exchange_driver
+      ~order_id
+      ~symbol:Symbol.bond
+      ~dir:Sell
+      ~price:(Price.of_int_exn 999)
+      ~size:(Size.of_int_exn size)
+    |> don't_wait_for
+    | Sell -> let order_id = Order_id_generator.next_id state.order_id_generator in
+    Exchange_driver.add_order
+      exchange_driver
+      ~order_id
+      ~symbol:Symbol.bond
+      ~dir:Buy
+      ~price:(Price.of_int_exn 1001)
+      ~size:(Size.of_int_exn size)
+    |> don't_wait_for
 
   let reset_all_bond_orders state = ()
 end
@@ -119,8 +142,10 @@ let run exchange_type =
              Bond_strategy.initialize_bond_orders state exchange_driver
            | Hello positions -> State.on_hello state positions
            | Fill order ->
+            print_s [%sexp (state.positions : Position.t Symbol.Map.t)];
              State.on_fill state order;
-             print_s [%sexp (state.positions : Position.t Symbol.Map.t)]
+             print_s [%sexp (state.positions : Position.t Symbol.Map.t)];
+           Bond_strategy.adjust_bond_orders state exchange_driver order
             | Close _ -> failwith "Market Closed"
            | _ ->
              (* Ignore all other messages (for now) *)
@@ -128,8 +153,7 @@ let run exchange_type =
           (* Regardless of what the message is, print it. You probably won't
              actually want to print all of the message you see from the
              exchange once you are running your bot in production, because
-             there's a lot of messages! *)
-          Core.printf !"%{sexp: Exchange_message.t}\n%!" message)
+             there's a lot of messages! *))
       in
       (* let schedule_periodic_nonsense () =
          run_every 1.0 ~f:(fun () ->
