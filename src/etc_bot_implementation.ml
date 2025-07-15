@@ -3,10 +3,18 @@ open Async
 open Import
 
 module State = struct
-  type t = { mutable positions : Position.t Symbol.Map.t;
-  order_id_generator : Order_id_generator.t } [@@deriving sexp]
+  type t =
+    { mutable positions : Position.t Symbol.Map.t
+    ; order_id_generator : Order_id_generator.t
+    }
+  [@@deriving sexp]
 
-  let create () = { positions = Symbol.Map.empty; order_id_generator = Order_id_generator.create () }
+  let create () =
+    { positions = Symbol.Map.empty
+    ; order_id_generator = Order_id_generator.create ()
+    }
+  ;;
+
   let next_id t = ()
 
   let add_order t ~symbol ~dir ~price ~size =
@@ -15,8 +23,16 @@ module State = struct
   ;;
 
   let on_hello t hello_message =
-    let positions = List.fold hello_message ~init:t.positions ~f:(fun positions (symbol, position) -> Map.add_exn positions ~key:symbol ~data:position) in
+    let positions =
+      List.fold
+        hello_message
+        ~init:t.positions
+        ~f:(fun positions (symbol, position) ->
+          Map.add_exn positions ~key:symbol ~data:position)
+    in
     t.positions <- positions
+  ;;
+
   let on_ack t order_id = ()
 
   let on_fill t (fill : Exchange_message.Fill.t) =
@@ -32,8 +48,32 @@ module State = struct
 end
 
 module Bond_strategy = struct
-  let initialize_bond_orders state = ()
-  let reset_all_bond_orders state = () 
+  let initialize_bond_orders (state : State.t) exchange_driver =
+    let positions = Map.find_exn state.positions Symbol.bond in
+    let position_as_int = Position.to_int positions in
+    let amount_to_buy = 100 - position_as_int in
+    let amount_to_sell = 200 - amount_to_buy in
+    let order_id = Order_id_generator.next_id state.order_id_generator in
+    Exchange_driver.add_order
+      exchange_driver
+      ~order_id
+      ~symbol:Symbol.bond
+      ~dir:Buy
+      ~price:(Price.of_int_exn 999)
+      ~size:(Size.of_int_exn amount_to_buy)
+    |> don't_wait_for;
+    let order_id = Order_id_generator.next_id state.order_id_generator in
+    Exchange_driver.add_order
+      exchange_driver
+      ~order_id
+      ~symbol:Symbol.bond
+      ~dir:Sell
+      ~price:(Price.of_int_exn 1001)
+      ~size:(Size.of_int_exn amount_to_sell)
+    |> don't_wait_for
+  ;;
+
+  let reset_all_bond_orders state = ()
 end
 
 (* [run_every seconds ~f] is a utility function that will run a given function, [f], every
@@ -57,8 +97,6 @@ let run exchange_type =
          easier. Feel free to open up order_id_generator.ml to see how the
          code works. *)
       let state = State.create () in
-      let order_id_generator = state.order_id_generator in
-      let latest_order = ref None in
       let read_messages_and_do_some_stuff () =
         (* Read the messages from the exchange. In general, a good rule of
            thumb is to read a LOT more than you write messages to the exchange.
@@ -78,29 +116,12 @@ let run exchange_type =
                 This is probably not a good order to send (do you understand
                 why?), and is just an example to show how you can send an
                 order to the exchange. *)
-             let order_id = Order_id_generator.next_id order_id_generator in
-             Exchange_driver.add_order
-               exchange_driver
-               ~order_id
-               ~symbol:Symbol.bond
-               ~dir:Buy
-               ~price:(Price.of_int_exn 999)
-               ~size:(Size.of_int_exn 50)
-             |> don't_wait_for;
-             let order_id = Order_id_generator.next_id order_id_generator in
-             let add_order =
-               Exchange_driver.add_order
-                 exchange_driver
-                 ~order_id
-                 ~symbol:Symbol.bond
-                 ~dir:Sell
-                 ~price:(Price.of_int_exn 1001)
-                 ~size:(Size.of_int_exn 50)
-             in
-             latest_order := Some (don't_wait_for add_order);
-             don't_wait_for add_order
-          | Hello positions -> ()
-           | Fill order -> State.on_fill state order
+             Bond_strategy.initialize_bond_orders state exchange_driver
+           | Hello positions -> State.on_hello state positions
+           | Fill order ->
+             State.on_fill state order;
+             print_s [%sexp (state.positions : Position.t Symbol.Map.t)]
+            | Close _ -> failwith "Market Closed"
            | _ ->
              (* Ignore all other messages (for now) *)
              ());

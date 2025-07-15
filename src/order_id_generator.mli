@@ -4,7 +4,7 @@
 
 open Import
 
-type t
+type t [@@deriving sexp]
 
 (** Initiate [t]. *)
 val create  : unit -> t
