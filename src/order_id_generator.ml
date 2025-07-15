@@ -1,7 +1,7 @@
 open Core
 open Import
 
-type t = int ref
+type t = int ref [@@deriving sexp]
 
 let create () = ref 1
 
