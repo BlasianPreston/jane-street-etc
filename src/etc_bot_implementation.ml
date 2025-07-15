@@ -83,7 +83,7 @@ module Bond_strategy = struct
       ~order_id
       ~symbol:Symbol.bond
       ~dir:Sell
-      ~price:(Price.of_int_exn 999)
+      ~price:(Price.of_int_exn 1001)
       ~size:(Size.of_int_exn size)
     |> don't_wait_for
     | Sell -> let order_id = Order_id_generator.next_id state.order_id_generator in
@@ -92,7 +92,7 @@ module Bond_strategy = struct
       ~order_id
       ~symbol:Symbol.bond
       ~dir:Buy
-      ~price:(Price.of_int_exn 1001)
+      ~price:(Price.of_int_exn 999)
       ~size:(Size.of_int_exn size)
     |> don't_wait_for
 
