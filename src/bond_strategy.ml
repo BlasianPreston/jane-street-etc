@@ -13,7 +13,7 @@ let initialize_bond_orders (state : State.t) =
     ~order_id
     ~symbol:Symbol.bond
     ~dir:Buy
-    ~price:(Price.of_int_exn 999)
+    ~price:(Price.of_int_exn (Price.to_int (Map.find_exn state.highest_buy Symbol.bond)))
     ~size:(Size.of_int_exn amount_to_buy)
   |> don't_wait_for;
   let order_id = Order_id_generator.next_id state.order_id_generator in
@@ -22,7 +22,7 @@ let initialize_bond_orders (state : State.t) =
     ~order_id
     ~symbol:Symbol.bond
     ~dir:Sell
-    ~price:(Price.of_int_exn 1001)
+    ~price:(Price.of_int_exn (Price.to_int (Map.find_exn state.lowest_sell Symbol.bond)))
     ~size:(Size.of_int_exn amount_to_sell)
   |> don't_wait_for
 ;;
@@ -37,7 +37,7 @@ let adjust_bond_orders (state : State.t) (order : Exchange_message.Fill.t) =
       ~order_id
       ~symbol:Symbol.bond
       ~dir:Sell
-      ~price:(Price.of_int_exn 1001)
+      ~price:(Price.of_int_exn (Price.to_int (Map.find_exn state.lowest_sell Symbol.bond)))
       ~size:(Size.of_int_exn size)
     |> don't_wait_for
   | Sell ->
@@ -47,7 +47,7 @@ let adjust_bond_orders (state : State.t) (order : Exchange_message.Fill.t) =
       ~order_id
       ~symbol:Symbol.bond
       ~dir:Buy
-      ~price:(Price.of_int_exn 999)
+      ~price:(Price.of_int_exn (Price.to_int (Map.find_exn state.highest_buy Symbol.bond)))
       ~size:(Size.of_int_exn size)
     |> don't_wait_for
 ;;

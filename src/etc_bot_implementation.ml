@@ -2,9 +2,6 @@ open! Core
 open Async
 open Import
 
-
-
-
 (* [run_every seconds ~f] is a utility function that will run a given function, [f], every
    [num_seconds] seconds. *)
 let run_every seconds ~f =
@@ -29,6 +26,7 @@ let run exchange_type =
           match message with
           | Open _ -> Bond_strategy.initialize_bond_orders state
           | Hello positions -> State.on_hello state positions
+          | Book message -> State.on_book state message
           | Fill order ->
             print_s [%sexp (state.positions : Position.t Symbol.Map.t)];
             State.on_fill state order;
