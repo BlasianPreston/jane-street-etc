@@ -26,13 +26,22 @@ let run exchange_type =
           match message with
           | Open _ -> Bond_strategy.initialize_bond_orders state
           | Hello positions -> State.on_hello state positions
-          | Book message -> State.on_book state message
+          | Book message ->
+            State.on_book state message;
+            if not state.initialize_adr
+            then (
+              match Map.find state.fair_value Symbol.vale with
+              | None -> ()
+              | Some price ->
+                Adr_strategy.initialize_adr_orders state;
+                state.initialize_adr <- true)
           | Fill order ->
-            print_s [%sexp (state.positions : Position.t Symbol.Map.t)];
             State.on_fill state order;
-            print_s [%sexp (state.positions : Position.t Symbol.Map.t)];
-            Bond_strategy.adjust_bond_orders state order
+            Bond_strategy.adjust_bond_orders state order;
+            Adr_strategy.adjust_adr_orders state order;
+            Adr_strategy.exchange_if_needed state
           | Close _ -> failwith "Market Closed"
+          | Reject msg -> print_s [%sexp (msg : (Exchange_message.Reject.t))]
           | _ ->
             (* Ignore all other messages (for now) *)
             ())

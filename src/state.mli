@@ -8,6 +8,7 @@ type t =
     ; mutable fair_value : Price.t Symbol.Map.t
     ; order_id_generator : Order_id_generator.t
     ; exchange_driver : (Exchange_driver.t [@sexp.opaque])
+    ; mutable initialize_adr : bool
     }
   [@@deriving sexp]
 

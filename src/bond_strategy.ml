@@ -28,6 +28,8 @@ let initialize_bond_orders (state : State.t) =
 ;;
 
 let adjust_bond_orders (state : State.t) (order : Exchange_message.Fill.t) =
+  let symbol = order.symbol in
+  if Symbol.equal symbol Symbol.bond then
   let size = Size.to_int order.size in
   match order.dir with
   | Buy ->

@@ -8,6 +8,7 @@ type t =
   ; mutable fair_value : Price.t Symbol.Map.t
   ; order_id_generator : Order_id_generator.t
   ; exchange_driver : (Exchange_driver.t[@sexp.opaque])
+  ; mutable initialize_adr : bool
   }
 [@@deriving sexp]
 
@@ -21,6 +22,7 @@ let create exchange_driver =
       Symbol.Map.of_alist_exn [ Symbol.bond, Price.of_int_exn 1000 ]
   ; order_id_generator = Order_id_generator.create ()
   ; exchange_driver
+  ; initialize_adr = false
   }
 ;;
 
@@ -51,25 +53,24 @@ let on_fill t (fill : Exchange_message.Fill.t) =
 ;;
 
 let on_book t (book : Exchange_message.Book.t) =
+  let symbol = book.symbol in
+  let book = book.book in
+  let buy_lst = book.buy in
+  let sell_lst = book.sell in
+  let best_buy_price = List.hd buy_lst in
+  let best_sell_price = List.hd sell_lst in
   t.highest_buy
-  <- Map.change t.highest_buy book.symbol ~f:(fun _ ->
-       let book = book.book in
-       let buy_lst = book.buy in
-       let best_price = List.hd buy_lst in
-       match best_price with None -> None | Some (price, _) -> Some price);
+  <- Map.change t.highest_buy symbol ~f:(fun _ ->
+       match best_buy_price with
+       | None -> None
+       | Some (price, _) -> Some price);
   t.lowest_sell
-  <- Map.change t.lowest_sell book.symbol ~f:(fun _ ->
-       let book = book.book in
-       let sell_lst = book.sell in
-       let best_price = List.hd sell_lst in
-       match best_price with None -> None | Some (price, _) -> Some price);
+  <- Map.change t.lowest_sell symbol ~f:(fun _ ->
+       match best_sell_price with
+       | None -> None
+       | Some (price, _) -> Some price);
   t.fair_value
-  <- Map.change t.lowest_sell book.symbol ~f:(fun _ ->
-       let book = book.book in
-       let buy_lst = book.buy in
-       let sell_lst = book.sell in
-       let best_buy_price = List.hd buy_lst in
-       let best_sell_price = List.hd sell_lst in
+  <- Map.change t.lowest_sell symbol ~f:(fun _ ->
        match best_buy_price, best_sell_price with
        | None, _ | _, None -> None
        | Some (buy_price, buy_size), Some (sell_price, sell_size) ->
