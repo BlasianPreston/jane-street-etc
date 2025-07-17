@@ -1,4 +1,5 @@
 open! Core
+open Async
 open Import
 
 type t =
@@ -9,6 +10,7 @@ type t =
   ; order_id_generator : Order_id_generator.t
   ; exchange_driver : (Exchange_driver.t[@sexp.opaque])
   ; mutable initialize_adr : bool
+  ; open_orders : Order_id.t Order_id.Table.t
   }
 [@@deriving sexp]
 
@@ -23,6 +25,7 @@ let create exchange_driver =
   ; order_id_generator = Order_id_generator.create ()
   ; exchange_driver
   ; initialize_adr = false
+  ; open_orders = Order_id.Table.create ()
   }
 ;;
 
@@ -85,3 +88,10 @@ let on_book t (book : Exchange_message.Book.t) =
                 + (sell_price_as_int * sell_size_as_int))
                / (buy_size_as_int + sell_size_as_int))))
 ;;
+
+let cancel_all_orders t =
+  let orders = t.open_orders in
+  let exchange_driver = t.exchange_driver in
+  Hashtbl.iter orders ~f:(fun id -> Exchange_driver.cancel exchange_driver ~order_id:id |> don't_wait_for);
+  print_endline "Cancel called";
+  Hashtbl.clear orders;

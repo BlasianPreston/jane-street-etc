@@ -2,7 +2,7 @@ open! Core
 open Async
 open Import
 
-let initialize_bond_orders (state : State.t) =
+let initialize_etf_orders (state : State.t) =
   let positions = Map.find_exn state.positions Symbol.bond in
   let position_as_int = Position.to_int positions in
   let amount_to_buy = 100 - position_as_int in
@@ -29,7 +29,7 @@ let initialize_bond_orders (state : State.t) =
   |> don't_wait_for
 ;;
 
-let adjust_bond_orders (state : State.t) (order : Exchange_message.Fill.t) =
+let adjust_etf_orders (state : State.t) (order : Exchange_message.Fill.t) =
   let symbol = order.symbol in
   if Symbol.equal symbol Symbol.bond then
   let size = Size.to_int order.size in

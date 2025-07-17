@@ -25,7 +25,14 @@ let run exchange_type =
         Async.Pipe.iter_without_pushback exchange_messages ~f:(fun message ->
           match message with
           | Open _ -> Bond_strategy.initialize_bond_orders state
-          | Hello positions -> State.on_hello state positions
+          | Hello positions ->
+            State.on_hello state positions;
+            run_every 10. ~f:(fun () ->
+              State.cancel_all_orders state;
+              Bond_strategy.initialize_bond_orders state;
+              match Map.find state.fair_value Symbol.valbz with
+              | None -> ()
+              | Some price -> Adr_strategy.initialize_adr_orders state)
           | Book message ->
             State.on_book state message;
             if not state.initialize_adr
@@ -37,6 +44,7 @@ let run exchange_type =
                 state.initialize_adr <- true)
           | Fill order ->
             State.on_fill state order;
+            Hashtbl.remove state.open_orders order.order_id;
             Bond_strategy.adjust_bond_orders state order;
             (match Map.find state.fair_value Symbol.valbz with
              | None -> ()

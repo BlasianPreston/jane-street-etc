@@ -9,6 +9,7 @@ type t =
     ; order_id_generator : Order_id_generator.t
     ; exchange_driver : (Exchange_driver.t [@sexp.opaque])
     ; mutable initialize_adr : bool
+    ; open_orders : Order_id.t Order_id.Table.t
     }
   [@@deriving sexp]
 
@@ -21,3 +22,5 @@ val on_hello : t -> (Symbol.t * Position.t) list -> unit
 val on_fill : t -> Exchange_message.Fill.t -> unit
 
 val on_book : t -> Exchange_message.Book.t -> unit
+
+val cancel_all_orders : t -> unit
