@@ -30,7 +30,7 @@ let run exchange_type =
             State.on_book state message;
             if not state.initialize_adr
             then (
-              match Map.find state.fair_value Symbol.vale with
+              match Map.find state.fair_value Symbol.valbz with
               | None -> ()
               | Some price ->
                 Adr_strategy.initialize_adr_orders state;
@@ -38,10 +38,12 @@ let run exchange_type =
           | Fill order ->
             State.on_fill state order;
             Bond_strategy.adjust_bond_orders state order;
-            Adr_strategy.adjust_adr_orders state order;
+            (match Map.find state.fair_value Symbol.valbz with
+             | None -> ()
+             | Some _ -> Adr_strategy.adjust_adr_orders state order);
             Adr_strategy.exchange_if_needed state
           | Close _ -> failwith "Market Closed"
-          | Reject msg -> print_s [%sexp (msg : (Exchange_message.Reject.t))]
+          | Reject msg -> print_s [%sexp (msg : Exchange_message.Reject.t)]
           | _ ->
             (* Ignore all other messages (for now) *)
             ())

@@ -69,8 +69,9 @@ let on_book t (book : Exchange_message.Book.t) =
        match best_sell_price with
        | None -> None
        | Some (price, _) -> Some price);
+
   t.fair_value
-  <- Map.change t.lowest_sell symbol ~f:(fun _ ->
+  <- Map.change t.fair_value symbol ~f:(fun _ ->
        match best_buy_price, best_sell_price with
        | None, _ | _, None -> None
        | Some (buy_price, buy_size), Some (sell_price, sell_size) ->
